@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parqueo Central — Operador</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0f1117;
+    --bg2:      #181c27;
+    --bg3:      #1e2333;
+    --border:   #2a2f42;
+    --accent:   #3b82f6;
+    --accent2:  #10b981;
+    --warn:     #f59e0b;
+    --danger:   #ef4444;
+    --text:     #e8eaf0;
+    --muted:    #6b7280;
+    --libre:    #10b981;
+    --ocupado:  #ef4444;
+    --reservado:#f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; display: flex; height: 100vh; overflow: hidden; }
+
+  /* SIDEBAR */
+  .sidebar { width: 220px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo .name { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 13px; color: var(--text); letter-spacing: 0.5px; }
+  .sidebar-logo .tag { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
+  .sidebar-logo .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); margin-right: 5px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .nav { flex: 1; padding: 12px 0; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 18px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .15s; border-left: 2px solid transparent; }
+  .nav-item:hover { color: var(--text); background: var(--bg3); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(59,130,246,.08); }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .sidebar-bottom { padding: 14px 18px; border-top: 1px solid var(--border); font-size: 12px; }
+  .operator-name { font-weight: 500; color: var(--text); }
+  .operator-role { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+  /* MAIN */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* TOPBAR */
+  .topbar { height: 54px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; flex-shrink: 0; }
+  .topbar-title { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; flex: 1; }
+  .topbar-time { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 500; color: var(--accent); }
+  .topbar-date { font-size: 11px; color: var(--muted); text-align: right; }
+
+  .stat-pill { background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-family: 'IBM Plex Mono', monospace; display: flex; align-items: center; gap: 6px; }
+  .stat-pill .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* CONTENT */
+  .content { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* SCREENS */
+  .screen { display: none; }
+  .screen.active { display: contents; }
+
+  /* CARDS */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; }
+  .card-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .card-body { padding: 18px; }
+
+  /* FORM */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1/-1; }
+  label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; font-family: 'IBM Plex Mono', monospace; }
+  input, select { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px; color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; outline: none; transition: border .15s; width: 100%; }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--bg3); }
+
+  .placa-input { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 3px; text-align: center; color: var(--accent); }
+
+  .lpr-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); color: #10b981; border-radius: 20px; padding: 4px 12px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
+
+  .btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-success { background: var(--accent2); color: #fff; }
+  .btn-success:hover { background: #059669; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+  .btn-lg { padding: 13px 28px; font-size: 15px; width: 100%; margin-top: 6px; }
+
+  .foto-preview { background: var(--bg3); border: 1px dashed var(--border); border-radius: 8px; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 12px; cursor: pointer; transition: border .15s; }
+  .foto-preview:hover { border-color: var(--accent); color: var(--accent); }
+  .foto-preview svg { width: 28px; height: 28px; }
+
+  /* MAPA */
+  .mapa-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  .mapa-grid { display: grid; gap: 8px; }
+  .mapa-zona { margin-bottom: 8px; }
+  .zona-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .espacios-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .espacio { width: 72px; height: 64px; border-radius: 8px; border: 1px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all .15s; gap: 3px; }
+  .espacio:hover { transform: translateY(-2px); }
+  .espacio .esp-code { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; }
+  .espacio .esp-type { font-size: 10px; }
+  .espacio.libre { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.4); color: #10b981; }
+  .espacio.ocupado { background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.4); color: #ef4444; }
+  .espacio.reservado { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.4); color: #f59e0b; }
+  .espacio.discapacidad { border-style: dashed; }
+
+  /* TABLA TICKETS */
+  .tabla { width: 100%; border-collapse: collapse; }
+  .tabla th { text-align: left; padding: 10px 14px; font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .8px; border-bottom: 1px solid var(--border); font-weight: 500; }
+  .tabla td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .tabla tr:last-child td { border-bottom: none; }
+  .tabla tr:hover td { background: var(--bg3); }
+  .placa-tag { font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--accent); font-size: 13px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-activo { background: rgba(16,185,129,.15); color: #10b981; }
+  .badge-pagado { background: rgba(59,130,246,.15); color: #60a5fa; }
+  .btn-xs { padding: 5px 12px; font-size: 12px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; }
+  .btn-xs:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* SALIDA */
+  .ticket-found { background: var(--bg3); border: 1px solid var(--accent); border-radius: 10px; padding: 18px; }
+  .ticket-found .placa-big { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; color: var(--accent); letter-spacing: 4px; }
+  .ticket-found .entrada-time { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .cobro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+  .cobro-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .cobro-item .ci-label { font-size: 11px; color: var(--muted); text-transform: uppercase; font-family: 'IBM Plex Mono', monospace; letter-spacing: .5px; }
+  .cobro-item .ci-val { font-size: 18px; font-weight: 600; margin-top: 4px; font-family: 'IBM Plex Mono', monospace; }
+  .total-box { background: var(--accent); border-radius: 8px; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; }
+  .total-box .total-label { font-size: 13px; font-weight: 500; color: rgba(255,255,255,.8); }
+  .total-box .total-val { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; color: #fff; }
+
+  .metodos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0; }
+  .metodo { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 6px; text-align: center; cursor: pointer; font-size: 12px; color: var(--muted); transition: all .15s; }
+  .metodo:hover, .metodo.sel { background: rgba(59,130,246,.15); border-color: var(--accent); color: var(--accent); }
+  .metodo svg { width: 20px; height: 20px; display: block; margin: 0 auto 5px; }
+
+  /* CIERRE DE CAJA */
+  .step-bar { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+  .step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; position: relative; }
+  .step-circle { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); background: var(--bg3); display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--muted); z-index: 1; transition: all .3s; }
+  .step-label { font-size: 11px; color: var(--muted); text-align: center; font-family: 'IBM Plex Mono', monospace; white-space: nowrap; }
+  .step.done .step-circle { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  .step.active .step-circle { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .step.active .step-label { color: var(--accent); }
+  .step-line { flex: 1; height: 2px; background: var(--border); margin-top: -22px; transition: background .3s; }
+  .step-line.done { background: var(--accent2); }
+
+  .metodo-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg3); border-radius: 8px; margin-bottom: 8px; }
+  .metodo-row .metodo-name { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .metodo-row .metodo-monto { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; color: var(--accent2); }
+
+  .arqueo-box { border-radius: 10px; padding: 18px; margin: 14px 0; }
+  .arqueo-ok { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); }
+  .arqueo-warn { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); }
+  .arqueo-danger { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); }
+
+  .turno-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); color: #10b981; border-radius: 20px; padding: 5px 14px; font-size: 12px; font-family: 'IBM Plex Mono', monospace; }
+  .turno-badge.cerrado { background: rgba(107,114,128,.12); border-color: rgba(107,114,128,.3); color: var(--muted); }
+
+  .big-stat { background: var(--bg3); border-radius: 10px; padding: 16px; text-align: center; }
+  .big-stat .bs-label { font-size: 10px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 1px; }
+  .big-stat .bs-val { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; margin-top: 6px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="name"><span class="dot"></span>PARQUEO CENTRAL</div>
+    <div class="tag">Sistema operador v1.0</div>
+  </div>
+  <div class="nav">
+    <div class="nav-item active" onclick="showScreen('entrada')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Registrar entrada
+    </div>
+    <div class="nav-item" onclick="showScreen('salida')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Registrar salida
+    </div>
+    <div class="nav-item" onclick="showScreen('mapa')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Mapa de espacios
+    </div>
+    <div class="nav-item" onclick="showScreen('tickets')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Tickets activos
+    </div>
+    <div style="border-top:1px solid var(--border);margin:8px 0"></div>
+    <div class="nav-item" onclick="showScreen('apertura')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Apertura de turno
+    </div>
+    <div class="nav-item" onclick="showScreen('cierre')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Cierre de caja
+    </div>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="operator-name">Juan Pérez</div>
+    <div class="operator-role">Operador · Turno mañana</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-title" id="screen-title">Registrar entrada</div>
+    <div class="stat-pill"><span class="dot" style="background:var(--libre)"></span><span id="stat-libre">12 libres</span></div>
+    <div class="stat-pill"><span class="dot" style="background:var(--ocupado)"></span><span id="stat-ocup">6 ocupados</span></div>
+    <div style="flex:1"></div>
+    <div>
+      <div class="topbar-time" id="clock">--:--:--</div>
+      <div class="topbar-date" id="datebox">--</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ===== SCREEN: ENTRADA ===== -->
+    <div class="screen active" id="screen-entrada">
+      <div style="display:grid;grid-template-columns:1fr 380px;gap:20px">
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Captura cámara -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">Cámara 1 — Entrada</span>
+              <span class="lpr-badge">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
+                LPR activo
+              </span>
+            </div>
+            <div class="card-body">
+              <div class="foto-preview" id="cam-preview" onclick="simularLPR()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <span>Haz clic para simular captura de cámara</span>
+              </div>
+              <div id="lpr-result" style="display:none;margin-top:12px;padding:12px;background:var(--bg3);border-radius:8px;display:none;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-family:'IBM Plex Mono',monospace">PLACA DETECTADA</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)" id="placa-lpr-text">GVK-1234</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">CONFIANZA</div>
+                  <div style="font-size:22px;font-weight:600;color:var(--accent2);font-family:'IBM Plex Mono',monospace" id="conf-lpr">97.3%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Datos vehículo -->
+          <div class="card">
+            <div class="card-head"><span class="card-title">Datos del vehículo</span></div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label>Placa</label>
+                  <input class="placa-input" type="text" id="inp-placa" placeholder="GVK-1234" maxlength="10" oninput="this.value=this.value.toUpperCase()">
+                </div>
+                <div class="form-group">
+                  <label>Nombre propietario</label>
+                  <input type="text" id="inp-nombre" placeholder="Carlos Mendoza">
+                </div>
+                <div class="form-group">
+                  <label>Teléfono</label>
+                  <input type="text" id="inp-tel" placeholder="0991234567">
+                </div>
+                <div class="form-group">
+                  <label>Tipo de vehículo</label>
+                  <select id="inp-tipo">
+                    <option>Auto</option>
+                    <option>Moto</option>
+                    <option>Camioneta</option>
+                    <option>Bus</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Color</label>
+                  <input type="text" id="inp-color" placeholder="Blanco">
+                </div>
+                <div class="form-group">
+                  <label>Marca / Modelo</label>
+                  <input type="text" placeholder="Toyota Corolla">
+                </div>
+                <div class="form-group">
+                  <label>Espacio asignado</label>
+                  <select id="inp-espacio">
+                    <option>A-01 — Zona A Piso 1</option>
+                    <option>A-02 — Zona A Piso 1</option>
+                    <option>A-03 — Zona A Piso 1</option>
+                    <option>B-01 — Zona B Piso 1</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Tarifa</label>
+                  <select>
+                    <option>Auto estándar — $1.50/h</option>
+                    <option>Moto — $0.75/h</option>
+                    <option>Camioneta — $2.00/h</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel derecho -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Resumen -->
+          <div class="card">
+            <div class="card-head"><span class="card-title">Resumen de entrada</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="background:var(--bg3);border-radius:8px;padding:14px;text-align:center">
+                <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:6px">HORA DE ENTRADA</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--accent)" id="hora-entrada-display">--:--:--</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:4px" id="fecha-entrada-display">--</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
+                  <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">ESPACIO</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--accent2);margin-top:4px">A-07</div>
+                </div>
+                <div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
+                  <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">TARIFA</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--warn);margin-top:4px">$1.50</div>
+                </div>
+              </div>
+              <button class="btn btn-success btn-lg" onclick="registrarEntrada()">
+                Registrar entrada e imprimir ticket
+              </button>
+              <button class="btn btn-ghost" style="width:100%;padding:10px">
+                Cancelar
+              </button>
+            </div>
+          </div>
+
+          <!-- Últimas entradas -->
+          <div class="card">
+            <div class="card-head"><span class="card-title">Últimas entradas</span></div>
+            <div style="overflow-x:auto">
+              <table class="tabla">
+                <thead><tr><th>Placa</th><th>Hora</th><th>Esp.</th></tr></thead>
+                <tbody id="ultimas-entradas">
+                  <tr><td><span class="placa-tag">ABC-001</span></td><td>08:42</td><td>A-02</td></tr>
+                  <tr><td><span class="placa-tag">XYZ-889</span></td><td>08:15</td><td>B-01</td></tr>
+                  <tr><td><span class="placa-tag">GHJ-321</span></td><td>07:58</td><td>A-05</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SCREEN: SALIDA ===== -->
+    <div class="screen" id="screen-salida">
+      <div style="display:grid;grid-template-columns:1fr 400px;gap:20px">
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Buscar ticket -->
+          <div class="card">
+            <div class="card-head"><span class="card-title">Buscar ticket</span></div>
+            <div class="card-body">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+                <div class="form-group">
+                  <label>Escanear QR o ingresar placa</label>
+                  <input class="placa-input" type="text" placeholder="GVK-1234" oninput="this.value=this.value.toUpperCase()" id="buscar-placa">
+                </div>
+                <div class="form-group">
+                  <label>N° de ticket</label>
+                  <input type="text" placeholder="TKT-20260323-00147" style="font-family:'IBM Plex Mono',monospace;font-size:13px">
+                </div>
+              </div>
+              <button class="btn btn-primary" onclick="buscarTicket()">Buscar ticket</button>
+            </div>
+          </div>
+
+          <!-- Ticket encontrado -->
+          <div class="card" id="ticket-detalle" style="display:none">
+            <div class="card-head">
+              <span class="card-title">Ticket encontrado</span>
+              <span class="badge badge-activo">Activo</span>
+            </div>
+            <div class="card-body">
+              <div class="ticket-found">
+                <div class="placa-big">GVK-1234</div>
+                <div class="entrada-time">Carlos Mendoza · Toyota Corolla Blanco · Espacio A-07</div>
+                <div class="entrada-time" style="margin-top:6px">Entrada: 09:14:32 · Foto de entrada disponible</div>
+              </div>
+              <div class="cobro-grid">
+                <div class="cobro-item">
+                  <div class="ci-label">Tiempo</div>
+                  <div class="ci-val" id="tiempo-val">3h 32m</div>
+                </div>
+                <div class="cobro-item">
+                  <div class="ci-label">Fracciones</div>
+                  <div class="ci-val">7</div>
+                </div>
+                <div class="cobro-item">
+                  <div class="ci-label">Subtotal</div>
+                  <div class="ci-val">$6.75</div>
+                </div>
+                <div class="cobro-item">
+                  <div class="ci-label">IVA 15%</div>
+                  <div class="ci-val">$1.01</div>
+                </div>
+              </div>
+              <div class="total-box">
+                <span class="total-label">Total a cobrar</span>
+                <span class="total-val">$7.76</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cámara salida -->
+          <div class="card" id="cam-salida-card" style="display:none">
+            <div class="card-head">
+              <span class="card-title">Cámara 2 — Salida (verificación)</span>
+              <span class="lpr-badge">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
+                Verificando placa
+              </span>
+            </div>
+            <div class="card-body">
+              <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:12px;display:flex;align-items:center;justify-content:space-between">
+                <div style="font-size:13px;color:var(--accent2)">
+                  <strong>Placa coincide</strong> con ticket de entrada
+                </div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent2)">GVK-1234 ✓</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel cobro -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card" id="cobro-panel" style="display:none">
+            <div class="card-head"><span class="card-title">Método de pago</span></div>
+            <div class="card-body">
+              <div class="metodos">
+                <div class="metodo sel" onclick="selMetodo(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
+                  Tarjeta
+                </div>
+                <div class="metodo" onclick="selMetodo(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                  Efectivo
+                </div>
+                <div class="metodo" onclick="selMetodo(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h.01M14 17h3M17 14v3M20 20h.01"/></svg>
+                  QR
+                </div>
+                <div class="metodo" onclick="selMetodo(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  Cortesía
+                </div>
+              </div>
+              <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:14px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px">
+                  <span style="color:var(--muted)">Efectivo recibido</span>
+                  <input type="number" style="width:100px;text-align:right;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;outline:none" placeholder="0.00" id="efectivo-inp">
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px">
+                  <span style="color:var(--muted)">Cambio</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--accent2)" id="cambio-val">$0.00</span>
+                </div>
+              </div>
+              <button class="btn btn-success btn-lg" onclick="procesarPago()">
+                Cobrar $7.76 e imprimir factura
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><span class="card-title">Tickets activos hoy</span></div>
+            <div style="overflow-x:auto">
+              <table class="tabla">
+                <thead><tr><th>Placa</th><th>Desde</th><th>Esp.</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td><span class="placa-tag">GVK-1234</span></td><td>09:14</td><td>A-07</td><td><button class="btn-xs" onclick="buscarTicketDirecto()">Cobrar</button></td></tr>
+                  <tr><td><span class="placa-tag">ABC-001</span></td><td>08:42</td><td>A-02</td><td><button class="btn-xs">Cobrar</button></td></tr>
+                  <tr><td><span class="placa-tag">XYZ-889</span></td><td>08:15</td><td>B-01</td><td><button class="btn-xs">Cobrar</button></td></tr>
+                  <tr><td><span class="placa-tag">GHJ-321</span></td><td>07:58</td><td>A-05</td><td><button class="btn-xs">Cobrar</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SCREEN: MAPA ===== -->
+    <div class="screen" id="screen-mapa">
+      <div style="display:grid;grid-template-columns:1fr 260px;gap:20px">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">Mapa de espacios — Piso 1</span>
+              <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:rgba(16,185,129,.5)"></div>Libre</div>
+                <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,.5)"></div>Ocupado</div>
+                <div class="legend-item"><div class="legend-dot" style="background:rgba(245,158,11,.5)"></div>Reservado</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="mapa-zona">
+                <div class="zona-label">Zona A — Autos</div>
+                <div class="espacios-row" id="zona-a"></div>
+              </div>
+              <div class="mapa-zona" style="margin-top:16px">
+                <div class="zona-label">Zona B — Motos</div>
+                <div class="espacios-row" id="zona-b"></div>
+              </div>
+              <div class="mapa-zona" style="margin-top:16px">
+                <div class="zona-label">Zona C — Discapacidad</div>
+                <div class="espacios-row" id="zona-c"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="card">
+            <div class="card-head"><span class="card-title">Ocupación</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="background:var(--bg3);border-radius:8px;padding:14px;text-align:center">
+                <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">OCUPACIÓN TOTAL</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:36px;font-weight:600;color:var(--warn);margin-top:4px">33%</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">6 de 18 espacios</div>
+              </div>
+              <div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden">
+                <div style="width:33%;height:100%;background:var(--warn);border-radius:4px;transition:width .5s"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:10px;text-align:center">
+                  <div style="font-size:10px;color:var(--libre);font-family:'IBM Plex Mono',monospace">LIBRES</div>
+                  <div style="font-size:22px;font-weight:600;color:var(--libre);font-family:'IBM Plex Mono',monospace">12</div>
+                </div>
+                <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:10px;text-align:center">
+                  <div style="font-size:10px;color:var(--ocupado);font-family:'IBM Plex Mono',monospace">OCUPADOS</div>
+                  <div style="font-size:22px;font-weight:600;color:var(--ocupado);font-family:'IBM Plex Mono',monospace">6</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><span class="card-title">Ingresos hoy</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+              <div style="background:var(--bg3);border-radius:8px;padding:14px;text-align:center">
+                <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">TOTAL COBRADO</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:var(--accent2);margin-top:4px">$48.25</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:0 4px">
+                <span style="color:var(--muted)">Tickets cerrados</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-weight:600">14</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:0 4px">
+                <span style="color:var(--muted)">Promedio por ticket</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-weight:600">$3.45</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:0 4px">
+                <span style="color:var(--muted)">Método más usado</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-weight:600">Efectivo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla lista -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Lista de espacios</span></div>
+        <div style="overflow-x:auto">
+          <table class="tabla">
+            <thead><tr><th>Código</th><th>Zona</th><th>Tipo</th><th>Estado</th><th>Vehículo</th><th>Desde</th><th>Tiempo</th></tr></thead>
+            <tbody id="lista-espacios"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SCREEN: TICKETS ===== -->
+    <div class="screen" id="screen-tickets">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Tickets activos</span>
+          <span style="font-size:12px;color:var(--muted)" id="tickets-count">6 en parqueo</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="tabla">
+            <thead><tr><th>Ticket</th><th>Placa</th><th>Cliente</th><th>Espacio</th><th>Entrada</th><th>Tiempo</th><th>Estado</th><th>Acción</th></tr></thead>
+            <tbody>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">TKT-...00147</td>
+                <td><span class="placa-tag">GVK-1234</span></td>
+                <td>Carlos Mendoza</td>
+                <td>A-07</td>
+                <td style="font-family:'IBM Plex Mono',monospace">09:14</td>
+                <td style="font-family:'IBM Plex Mono',monospace;color:var(--warn)">3h 32m</td>
+                <td><span class="badge badge-activo">Activo</span></td>
+                <td><button class="btn-xs">Cobrar</button></td>
+              </tr>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">TKT-...00146</td>
+                <td><span class="placa-tag">ABC-001</span></td>
+                <td>María Ortega</td>
+                <td>A-02</td>
+                <td style="font-family:'IBM Plex Mono',monospace">08:42</td>
+                <td style="font-family:'IBM Plex Mono',monospace;color:var(--warn)">4h 04m</td>
+                <td><span class="badge badge-activo">Activo</span></td>
+                <td><button class="btn-xs">Cobrar</button></td>
+              </tr>
+              <tr>
+                <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">TKT-...00144</td>
+                <td><span class="placa-tag">XYZ-889</span></td>
+                <td>Pedro Suárez</td>
+                <td>B-01</td>
+                <td style="font-family:'IBM Plex Mono',monospace">08:15</td>
+                <td style="font-family:'IBM Plex Mono',monospace;color:var(--danger)">4h 31m</td>
+                <td><span class="badge badge-activo">Activo</span></td>
+                <td><button class="btn-xs">Cobrar</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SCREEN: APERTURA DE TURNO ===== -->
+    <div class="screen" id="screen-apertura">
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:20px">
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">Apertura de turno</span>
+              <span class="turno-badge">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
+                Sin turno activo
+              </span>
+            </div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Operador</label>
+                  <select>
+                    <option>Juan Pérez</option>
+                    <option>María Ortega</option>
+                    <option>Luis Cárdenas</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Turno</label>
+                  <select id="sel-turno">
+                    <option>Mañana (06:00 – 14:00)</option>
+                    <option>Tarde (14:00 – 22:00)</option>
+                    <option>Noche (22:00 – 06:00)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Fecha</label>
+                  <input type="date" id="aper-fecha">
+                </div>
+                <div class="form-group">
+                  <label>Hora inicio</label>
+                  <input type="time" id="aper-hora">
+                </div>
+                <div class="form-group full">
+                  <label>Fondo inicial de caja (efectivo)</label>
+                  <input type="number" id="fondo-inicial" placeholder="0.00" style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--accent2);text-align:center" oninput="calcFondo()">
+                </div>
+                <div class="form-group full">
+                  <label>Notas de inicio de turno</label>
+                  <input type="text" placeholder="Ej: Barrera norte en mantenimiento...">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Desglose billetes -->
+          <div class="card">
+            <div class="card-head"><span class="card-title">Desglose de billetes y monedas</span></div>
+            <div class="card-body">
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" id="billetes-grid"></div>
+              <div style="margin-top:14px;padding:12px 16px;background:var(--bg3);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+                <span style="color:var(--muted);font-size:13px">Total contado</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;color:var(--accent2)" id="total-contado">$0.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel resumen -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-head"><span class="card-title">Resumen apertura</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+              <div class="big-stat">
+                <div class="bs-label">Fondo inicial</div>
+                <div class="bs-val" style="color:var(--accent2)" id="fondo-display">$0.00</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="big-stat">
+                  <div class="bs-label">Turno</div>
+                  <div style="font-size:13px;font-weight:600;margin-top:6px;font-family:'IBM Plex Mono',monospace">Mañana</div>
+                </div>
+                <div class="big-stat">
+                  <div class="bs-label">Operador</div>
+                  <div style="font-size:13px;font-weight:600;margin-top:6px;font-family:'IBM Plex Mono',monospace">J. Pérez</div>
+                </div>
+              </div>
+              <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:12px;font-size:12px;color:#f59e0b">
+                Al abrir el turno el sistema registra el fondo inicial. Cualquier diferencia al cierre será comparada contra este monto.
+              </div>
+              <button class="btn btn-success btn-lg" onclick="abrirTurno()">
+                Abrir turno e iniciar caja
+              </button>
+            </div>
+          </div>
+
+          <!-- Turno anterior -->
+          <div class="card">
+            <div class="card-head"><span class="card-title">Turno anterior</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--muted)">Operador</span><span>María Ortega</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--muted)">Turno</span><span>Noche · 22:00–06:00</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--muted)">Cierre</span><span style="font-family:'IBM Plex Mono',monospace">06:03:14</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--muted)">Recaudado</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--accent2)">$31.50</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--muted)">Diferencia caja</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--accent2)">$0.00</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--muted)">Tickets traspasados</span><span style="font-family:'IBM Plex Mono',monospace">3 vehículos</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SCREEN: CIERRE DE CAJA ===== -->
+    <div class="screen" id="screen-cierre">
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- Steps -->
+        <div class="card">
+          <div class="card-body" style="padding:20px 24px 16px">
+            <div class="step-bar" id="step-bar">
+              <div class="step active" id="step-1"><div class="step-circle">1</div><div class="step-label">Resumen</div></div>
+              <div class="step-line" id="line-1"></div>
+              <div class="step" id="step-2"><div class="step-circle">2</div><div class="step-label">Arqueo</div></div>
+              <div class="step-line" id="line-2"></div>
+              <div class="step" id="step-3"><div class="step-circle">3</div><div class="step-label">Pendientes</div></div>
+              <div class="step-line" id="line-3"></div>
+              <div class="step" id="step-4"><div class="step-circle">4</div><div class="step-label">Confirmar</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASO 1: Resumen del turno -->
+        <div id="paso-1" style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+            <div class="big-stat"><div class="bs-label">Hora inicio</div><div class="bs-val" style="font-size:20px;color:var(--accent)">06:00</div></div>
+            <div class="big-stat"><div class="bs-label">Hora cierre</div><div class="bs-val" style="font-size:20px;color:var(--accent)" id="hora-cierre-val">--:--</div></div>
+            <div class="big-stat"><div class="bs-label">Vehículos atendidos</div><div class="bs-val" style="color:var(--text)">20</div></div>
+            <div class="big-stat"><div class="bs-label">Tickets cerrados</div><div class="bs-val" style="color:var(--text)">14</div></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><span class="card-title">Recaudación por método de pago</span></div>
+            <div class="card-body">
+              <div class="metodo-row">
+                <div class="metodo-name">
+                  <div style="width:10px;height:10px;border-radius:50%;background:var(--accent2)"></div>
+                  Efectivo
+                </div>
+                <div class="metodo-monto">$28.50</div>
+              </div>
+              <div class="metodo-row">
+                <div class="metodo-name">
+                  <div style="width:10px;height:10px;border-radius:50%;background:var(--accent)"></div>
+                  Tarjeta de crédito / débito
+                </div>
+                <div class="metodo-monto">$14.25</div>
+              </div>
+              <div class="metodo-row">
+                <div class="metodo-name">
+                  <div style="width:10px;height:10px;border-radius:50%;background:var(--warn)"></div>
+                  QR / Transferencia
+                </div>
+                <div class="metodo-monto">$5.50</div>
+              </div>
+              <div class="metodo-row">
+                <div class="metodo-name">
+                  <div style="width:10px;height:10px;border-radius:50%;background:var(--muted)"></div>
+                  Cortesías
+                </div>
+                <div class="metodo-monto" style="color:var(--muted)">$0.00</div>
+              </div>
+              <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:14px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:14px;font-weight:500">Total recaudado</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:var(--accent2)">$48.25</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end">
+            <button class="btn btn-primary" onclick="irPaso(2)">Continuar al arqueo →</button>
+          </div>
+        </div>
+
+        <!-- PASO 2: Arqueo de efectivo -->
+        <div id="paso-2" style="display:none;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-head"><span class="card-title">Arqueo de efectivo</span></div>
+            <div class="card-body">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                <div>
+                  <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Efectivo esperado (sistema)</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:var(--accent)">$48.50</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px">$28.50 cobros + $20.00 fondo inicial</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Efectivo declarado (físico)</div>
+                  <input type="number" id="efectivo-declarado" placeholder="0.00" style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:var(--accent2);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;width:100%;outline:none" oninput="calcArqueo()">
+                </div>
+              </div>
+
+              <div id="arqueo-result" class="arqueo-box arqueo-ok" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div>
+                    <div style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.8px">Diferencia</div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;margin-top:4px" id="diff-val">$0.00</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div id="arqueo-estado" style="font-size:13px;font-weight:500">Caja cuadrada</div>
+                    <div id="arqueo-sub" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="nota-wrap" style="display:none;margin-top:12px">
+                <div style="font-size:11px;color:var(--warn);font-family:'IBM Plex Mono',monospace;margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px">Justificación requerida</div>
+                <input type="text" id="nota-diferencia" placeholder="Explica la diferencia encontrada...">
+              </div>
+            </div>
+          </div>
+
+          <!-- Desglose conteo físico -->
+          <div class="card">
+            <div class="card-head"><span class="card-title">Conteo físico de caja (opcional)</span></div>
+            <div class="card-body">
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" id="billetes-cierre"></div>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between">
+            <button class="btn btn-ghost" onclick="irPaso(1)">← Volver</button>
+            <button class="btn btn-primary" onclick="irPaso(3)">Continuar →</button>
+          </div>
+        </div>
+
+        <!-- PASO 3: Tickets pendientes -->
+        <div id="paso-3" style="display:none;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">Vehículos en parqueo al cierre</span>
+              <span style="font-size:12px;color:var(--warn)">Se traspasan al siguiente turno</span>
+            </div>
+            <div style="overflow-x:auto">
+              <table class="tabla">
+                <thead><tr><th>Placa</th><th>Cliente</th><th>Espacio</th><th>Entrada</th><th>Tiempo</th><th>Monto aprox.</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><span class="placa-tag">GVK-1234</span></td>
+                    <td>Carlos Mendoza</td><td>A-07</td>
+                    <td style="font-family:'IBM Plex Mono',monospace">09:14</td>
+                    <td style="font-family:'IBM Plex Mono',monospace;color:var(--warn)">8h 46m</td>
+                    <td style="font-family:'IBM Plex Mono',monospace;color:var(--accent2)">~$12.00</td>
+                  </tr>
+                  <tr>
+                    <td><span class="placa-tag">ABC-001</span></td>
+                    <td>María Ortega</td><td>A-02</td>
+                    <td style="font-family:'IBM Plex Mono',monospace">08:42</td>
+                    <td style="font-family:'IBM Plex Mono',monospace;color:var(--warn)">9h 18m</td>
+                    <td style="font-family:'IBM Plex Mono',monospace;color:var(--accent2)">~$12.00</td>
+                  </tr>
+                  <tr>
+                    <td><span class="placa-tag">XYZ-889</span></td>
+                    <td>Pedro Suárez</td><td>B-01</td>
+                    <td style="font-family:'IBM Plex Mono',monospace">08:15</td>
+                    <td style="font-family:'IBM Plex Mono',monospace;color:var(--danger)">9h 45m</td>
+                    <td style="font-family:'IBM Plex Mono',monospace;color:var(--accent2)">~$6.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:12px 16px;font-size:12px;color:#f59e0b">
+            Estos 3 tickets permanecen abiertos y serán asignados al operador del siguiente turno. El cobro se realizará cuando salgan.
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <button class="btn btn-ghost" onclick="irPaso(2)">← Volver</button>
+            <button class="btn btn-primary" onclick="irPaso(4)">Continuar →</button>
+          </div>
+        </div>
+
+        <!-- PASO 4: Confirmar cierre -->
+        <div id="paso-4" style="display:none;flex-direction:column;gap:16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="card">
+              <div class="card-head"><span class="card-title">Resumen final del turno</span></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Operador</span><span style="font-weight:500">Juan Pérez</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Turno</span><span>Mañana · 06:00 – 18:00</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Vehículos atendidos</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">20</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Total recaudado</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--accent2)">$48.25</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Efectivo en caja</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600" id="conf-efectivo">$0.00</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Diferencia</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600" id="conf-diferencia">$0.00</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0"><span style="color:var(--muted)">Tickets traspasados</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600">3</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><span class="card-title">Confirmación</span></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+                <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:12px;font-size:12px;color:#f87171">
+                  Al confirmar el cierre no podrás registrar más movimientos en este turno. Esta acción es irreversible.
+                </div>
+                <div class="form-group">
+                  <label>Contraseña del operador</label>
+                  <input type="password" id="pass-cierre" placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                  <label>Observaciones finales</label>
+                  <input type="text" placeholder="Novedades del turno...">
+                </div>
+                <button class="btn btn-success btn-lg" onclick="confirmarCierre()" style="margin-top:4px">
+                  Cerrar turno e imprimir reporte
+                </button>
+                <button class="btn btn-ghost" style="width:100%;padding:10px" onclick="irPaso(3)">← Volver</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const titles = {
+  entrada:'Registrar entrada', salida:'Registrar salida y cobro',
+  mapa:'Mapa de espacios', tickets:'Tickets activos',
+  apertura:'Apertura de turno', cierre:'Cierre de caja'
+};
+const screenList = ['entrada','salida','mapa','tickets','apertura','cierre'];
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  const idx = screenList.indexOf(id);
+  document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  document.getElementById('screen-title').textContent = titles[id];
+  if (id === 'cierre') { document.getElementById('hora-cierre-val').textContent = new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}); }
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('es-EC');
+  document.getElementById('datebox').textContent = now.toLocaleDateString('es-EC',{weekday:'short',day:'numeric',month:'short'});
+  document.getElementById('hora-entrada-display').textContent = now.toLocaleTimeString('es-EC');
+  document.getElementById('fecha-entrada-display').textContent = now.toLocaleDateString('es-EC',{day:'numeric',month:'long',year:'numeric'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function simularLPR() {
+  const preview = document.getElementById('cam-preview');
+  preview.innerHTML = '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--accent2)">Procesando LPR...</div>';
+  setTimeout(() => {
+    preview.style.background = 'rgba(59,130,246,.05)';
+    preview.style.border = '1px solid rgba(59,130,246,.3)';
+    preview.innerHTML = '<div style="font-size:11px;color:var(--accent);font-family:\'IBM Plex Mono\',monospace">CAPTURA OK · 14:46:32</div>';
+    const res = document.getElementById('lpr-result');
+    res.style.display = 'flex';
+    document.getElementById('inp-placa').value = 'GVK-1234';
+    document.getElementById('inp-nombre').value = 'Carlos Mendoza';
+    document.getElementById('inp-color').value = 'Blanco';
+  }, 1200);
+}
+
+function registrarEntrada() {
+  const placa = document.getElementById('inp-placa').value || 'GVK-1234';
+  const tbody = document.getElementById('ultimas-entradas');
+  const now = new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><span class="placa-tag">${placa}</span></td><td>${now}</td><td>A-07</td>`;
+  tbody.insertBefore(tr, tbody.firstChild);
+  alert('Ticket generado e impreso para ' + placa + '\nEspacio A-07 — ' + now);
+}
+
+function buscarTicket() {
+  const placa = document.getElementById('buscar-placa').value;
+  if (!placa && document.getElementById('buscar-placa').value === '') {
+    document.getElementById('buscar-placa').value = 'GVK-1234';
+  }
+  document.getElementById('ticket-detalle').style.display = 'block';
+  document.getElementById('cam-salida-card').style.display = 'block';
+  document.getElementById('cobro-panel').style.display = 'block';
+}
+
+function buscarTicketDirecto() {
+  showScreen('salida');
+  setTimeout(() => { buscarTicket(); }, 100);
+}
+
+function selMetodo(el) {
+  document.querySelectorAll('.metodo').forEach(m => m.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+document.getElementById('efectivo-inp') && document.getElementById('efectivo-inp').addEventListener('input', function() {
+  const total = 7.76;
+  const recibido = parseFloat(this.value) || 0;
+  const cambio = Math.max(0, recibido - total);
+  document.getElementById('cambio-val').textContent = '$' + cambio.toFixed(2);
+});
+
+function procesarPago() {
+  alert('Pago procesado correctamente.\nFactura impresa — Barrera de salida autorizada.\n\nGVK-1234 · $7.76 · Espacio A-07 liberado.');
+}
+
+const espaciosData = [
+  {code:'A-01',zona:'a',tipo:'Auto',estado:'libre'},{code:'A-02',zona:'a',tipo:'Auto',estado:'ocupado',placa:'ABC-001',desde:'08:42'},
+  {code:'A-03',zona:'a',tipo:'Auto',estado:'libre'},{code:'A-04',zona:'a',tipo:'Auto',estado:'libre'},
+  {code:'A-05',zona:'a',tipo:'Auto',estado:'ocupado',placa:'GHJ-321',desde:'07:58'},{code:'A-06',zona:'a',tipo:'Auto',estado:'libre'},
+  {code:'A-07',zona:'a',tipo:'Auto',estado:'ocupado',placa:'GVK-1234',desde:'09:14'},{code:'A-08',zona:'a',tipo:'Auto',estado:'libre'},
+  {code:'A-09',zona:'a',tipo:'Auto',estado:'libre'},{code:'A-10',zona:'a',tipo:'Auto',estado:'libre'},
+  {code:'B-01',zona:'b',tipo:'Moto',estado:'ocupado',placa:'XYZ-889',desde:'08:15'},{code:'B-02',zona:'b',tipo:'Moto',estado:'libre'},
+  {code:'B-03',zona:'b',tipo:'Moto',estado:'libre'},{code:'B-04',zona:'b',tipo:'Moto',estado:'ocupado',placa:'MNO-456',desde:'10:02'},
+  {code:'B-05',zona:'b',tipo:'Moto',estado:'libre'},{code:'B-06',zona:'b',tipo:'Moto',estado:'libre'},
+  {code:'C-01',zona:'c',tipo:'Discap.',estado:'libre'},{code:'C-02',zona:'c',tipo:'Discap.',estado:'reservado'},
+];
+
+function buildMapa() {
+  ['a','b','c'].forEach(zona => {
+    const cont = document.getElementById('zona-'+zona);
+    if (!cont) return;
+    cont.innerHTML = '';
+    espaciosData.filter(e => e.zona === zona).forEach(e => {
+      const div = document.createElement('div');
+      div.className = 'espacio ' + e.estado + (e.tipo==='Discap.'?' discapacidad':'');
+      div.innerHTML = `<div class="esp-code">${e.code}</div><div class="esp-type">${e.tipo}</div>`;
+      div.title = e.placa ? `${e.placa} desde ${e.desde}` : 'Disponible';
+      div.onclick = () => { if(e.estado==='ocupado') { showScreen('salida'); document.getElementById('buscar-placa').value=e.placa; buscarTicket(); } };
+      cont.appendChild(div);
+    });
+  });
+
+  const tbody = document.getElementById('lista-espacios');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  espaciosData.forEach(e => {
+    const tr = document.createElement('tr');
+    const now = new Date();
+    let tiempo = '';
+    if (e.desde) {
+      const [h,m] = e.desde.split(':').map(Number);
+      const desde = new Date(); desde.setHours(h,m,0);
+      const diff = Math.floor((now-desde)/60000);
+      tiempo = `${Math.floor(diff/60)}h ${diff%60}m`;
+    }
+    tr.innerHTML = `
+      <td style="font-family:'IBM Plex Mono',monospace;font-weight:600">${e.code}</td>
+      <td>Zona ${e.zona.toUpperCase()}</td>
+      <td>${e.tipo}</td>
+      <td><span class="badge badge-${e.estado==='libre'?'activo':e.estado==='ocupado'?'pagado':'activo'}" style="${e.estado==='ocupado'?'background:rgba(239,68,68,.15);color:#f87171':e.estado==='reservado'?'background:rgba(245,158,11,.15);color:#fbbf24':''}">${e.estado}</span></td>
+      <td>${e.placa?`<span class="placa-tag">${e.placa}</span>`:'-'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${e.desde||'-'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--warn)">${tiempo||'-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+const billetes = [
+  {val:50,label:'$50'},{val:20,label:'$20'},{val:10,label:'$10'},{val:5,label:'$5'},
+  {val:1,label:'$1'},{val:0.50,label:'¢50'},{val:0.25,label:'¢25'},{val:0.10,label:'¢10'}
+];
+
+function buildBilletes(containerId) {
+  const cont = document.getElementById(containerId);
+  if (!cont) return;
+  cont.innerHTML = '';
+  billetes.forEach(b => {
+    const div = document.createElement('div');
+    div.style.cssText = 'background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center';
+    div.innerHTML = `
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--warn);margin-bottom:6px">${b.label}</div>
+      <input type="number" min="0" value="0" data-val="${b.val}"
+        style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--text);outline:none"
+        oninput="recalcBilletes('${containerId}','${containerId==='billetes-grid'?'total-contado':''}')">
+      <div style="font-size:10px;color:var(--muted);margin-top:4px" id="sub-${containerId}-${b.val}">$0.00</div>
+    `;
+    cont.appendChild(div);
+  });
+}
+
+function recalcBilletes(containerId, outputId) {
+  let total = 0;
+  document.querySelectorAll(`#${containerId} input[data-val]`).forEach(inp => {
+    const qty = parseInt(inp.value)||0;
+    const val = parseFloat(inp.dataset.val);
+    const sub = qty*val;
+    total += sub;
+    const subEl = inp.parentElement.querySelector('div[id^="sub-"]');
+    if (subEl) subEl.textContent = '$'+sub.toFixed(2);
+  });
+  if (outputId) document.getElementById(outputId).textContent = '$'+total.toFixed(2);
+  document.getElementById('fondo-inicial') && (document.getElementById('fondo-inicial').value = total.toFixed(2));
+  calcFondo();
+  return total;
+}
+
+function calcFondo() {
+  const v = parseFloat(document.getElementById('fondo-inicial')?.value)||0;
+  if (document.getElementById('fondo-display')) document.getElementById('fondo-display').textContent = '$'+v.toFixed(2);
+}
+
+function abrirTurno() {
+  const fondo = parseFloat(document.getElementById('fondo-inicial')?.value)||0;
+  alert(`Turno abierto correctamente.\n\nOperador: Juan Pérez\nFondo inicial: $${fondo.toFixed(2)}\nHora: ${new Date().toLocaleTimeString('es-EC')}`);
+  document.querySelector('.turno-badge').className = 'turno-badge';
+  document.querySelector('.turno-badge').innerHTML = '<svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg> Turno activo';
+  showScreen('entrada');
+}
+
+let currentPaso = 1;
+function irPaso(n) {
+  [1,2,3,4].forEach(i => {
+    const p = document.getElementById('paso-'+i);
+    if (p) p.style.display = i===n ? 'flex' : 'none';
+    const s = document.getElementById('step-'+i);
+    if (s) { s.classList.remove('active','done'); if(i<n) s.classList.add('done'); if(i===n) s.classList.add('active'); }
+    const l = document.getElementById('line-'+i);
+    if (l) { l.classList.toggle('done', i<n); }
+  });
+  currentPaso = n;
+  if (n===2) buildBilletes('billetes-cierre');
+  if (n===4) {
+    const dec = parseFloat(document.getElementById('efectivo-declarado')?.value)||0;
+    document.getElementById('conf-efectivo').textContent = '$'+dec.toFixed(2);
+    const diff = dec - 48.50;
+    document.getElementById('conf-diferencia').textContent = (diff>=0?'+':'')+diff.toFixed(2);
+    document.getElementById('conf-diferencia').style.color = Math.abs(diff)<0.01 ? 'var(--accent2)' : diff<0 ? 'var(--danger)' : 'var(--warn)';
+  }
+}
+
+function calcArqueo() {
+  const esperado = 48.50;
+  const declarado = parseFloat(document.getElementById('efectivo-declarado').value)||0;
+  const diff = declarado - esperado;
+  const res = document.getElementById('arqueo-result');
+  res.style.display = 'block';
+  document.getElementById('diff-val').textContent = (diff>=0?'+':'') + diff.toFixed(2);
+  const nota = document.getElementById('nota-wrap');
+  if (Math.abs(diff) < 0.01) {
+    res.className = 'arqueo-box arqueo-ok';
+    document.getElementById('arqueo-estado').style.color = 'var(--accent2)';
+    document.getElementById('arqueo-estado').textContent = 'Caja cuadrada';
+    document.getElementById('arqueo-sub').textContent = 'Sin diferencias';
+    nota.style.display = 'none';
+  } else if (Math.abs(diff) <= 2) {
+    res.className = 'arqueo-box arqueo-warn';
+    document.getElementById('arqueo-estado').style.color = '#f59e0b';
+    document.getElementById('arqueo-estado').textContent = diff > 0 ? 'Sobrante en caja' : 'Faltante en caja';
+    document.getElementById('arqueo-sub').textContent = 'Diferencia menor — agrega una nota';
+    nota.style.display = 'block';
+  } else {
+    res.className = 'arqueo-box arqueo-danger';
+    document.getElementById('arqueo-estado').style.color = 'var(--danger)';
+    document.getElementById('arqueo-estado').textContent = diff > 0 ? 'Sobrante significativo' : 'Faltante significativo';
+    document.getElementById('arqueo-sub').textContent = 'Diferencia mayor — justificación obligatoria';
+    nota.style.display = 'block';
+  }
+}
+
+function confirmarCierre() {
+  const pass = document.getElementById('pass-cierre').value;
+  if (!pass) { alert('Ingresa tu contraseña para confirmar el cierre.'); return; }
+  alert('Turno cerrado correctamente.\n\nReporte impreso y guardado en el sistema.\n\n• Total recaudado: $48.25\n• Tickets traspasados: 3\n• Cierre: ' + new Date().toLocaleTimeString('es-EC'));
+  showScreen('apertura');
+}
+
+// Inicializar apertura
+const aperFecha = document.getElementById('aper-fecha');
+const aperHora = document.getElementById('aper-hora');
+if (aperFecha) { const now = new Date(); aperFecha.value = now.toISOString().split('T')[0]; aperHora.value = now.toTimeString().slice(0,5); }
+buildBilletes('billetes-grid');
+buildMapa();
+</script>
+</body>
+</html>
